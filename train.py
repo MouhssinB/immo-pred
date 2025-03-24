@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
 
-
 df_in = pd.read_csv(r"data/ValeursFoncieres-2023.txt" , low_memory=False)
 df_in = df_in.reset_index(drop=True)
 

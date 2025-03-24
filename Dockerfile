@@ -7,7 +7,7 @@ WORKDIR /app
 # Copier les fichiers de dépendances
 COPY requirements.txt .
 COPY main.py .
-COPY app_test.py .
+COPY boucle_appel.py .
 COPY templates/ templates/
 COPY data/ data/
 COPY tests/ tests/

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Estimation Immobilière</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #e9ecef 0%, #b8a4db 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            width: 90%;
+            max-width: 600px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+        }
+        h2 {
+            color: #2c3e50;
+            margin-bottom: 30px;
+            font-weight: 600;
+            font-size: 28px;
+            text-align: center;
+        }
+        .input-group {
+            margin-bottom: 25px;
+        }
+        input {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            background: #f8f9fa;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            margin-bottom: 15px;
+        }
+        input:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px #4a90e2;
+        }
+        button {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            background: #4a90e2;
+            color: white;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        button:hover {
+            background: #357abd;
+            transform: translateY(-2px);
+        }
+        .result {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            text-align: center;
+            font-size: 20px;
+            color: #2c3e50;
+            display: none;
+        }
+        .result.active {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+<div class="container" style="background-color: #e3f2fd; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-radius: 15px; padding: 30px;">
+    <h2>Estimation de Prix Immobilier</h2>
+    <div class="input-group">
+        <input type="number" id="nb_pieces" placeholder="Nombre de pi&egrave;ces principales" min="1">
+        <input type="number" id="surface" placeholder="Surface habitable (m&sup2;)" min="1">
+    </div>
+    <button onclick="predict()">Estimer le prix</button>
+    <div class="result" id="result"></div>
+</div>
+
+<script>
+    async function predict() {
+        const nb_piece = document.getElementById("nb_pieces").value;
+        const surface = document.getElementById("surface").value;
+        
+        if (!nb_piece || !surface) {
+            alert("Veuillez remplir tous les champs");
+            return;
+        }
+
+        try {
+            const response = await fetch('/predict', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    Nombre_pieces_principales: parseFloat(nb_piece), 
+                    Surface_reelle_bati: parseFloat(surface) 
+                })
+            });
+            const data = await response.json();
+            const result = document.getElementById("result");
+            result.innerText = "Prix estime : " + new Intl.NumberFormat('fr-FR', {
+                style: 'currency',
+                currency: 'EUR'
+            }).format(data.Prix_estime);
+            result.classList.add("active");
+        } catch (error) {
+            console.error("Erreur lors de la prediction :", error);
+            alert("Une erreur est survenue lors de l'estimation");
+        }
+    }
+</script>
+</body>
+</html>

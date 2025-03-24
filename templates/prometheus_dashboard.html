@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Prometheus</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .dashboard {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .metric-card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .metric-title {
+            font-size: 1.2em;
+            color: #333;
+            margin-bottom: 15px;
+        }
+        .metric-value {
+            font-size: 2em;
+            color: #2196F3;
+            font-weight: bold;
+            text-align: center;
+        }
+        .chart {
+            width: 100%;
+            height: 300px;
+            margin-top: 20px;
+        }
+        .header {
+            background: #2196F3;
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            margin: 0;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <div class="header">
+            <h1>Dashboard Monitoring</h1>
+        </div>
+        <div class="grid">
+            <div class="metric-card">
+                <div class="metric-title">Nombre total de pr&eacute;dictions</div>
+                <div class="metric-value" id="total-predictions">-</div>
+            </div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-title">&Eacute;volution du nombre d'appels</div>
+            <div id="calls-chart" class="chart"></div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-title">Distribution des prix pr&eacute;dits</div>
+            <div id="price-chart" class="chart"></div>
+        </div>
+    </div>
+
+    <script>
+        let callsData = {
+            x: [],
+            y: []
+        };
+
+        function parsePrometheusMetrics(text) {
+            const lines = text.split('\n');
+            const metrics = {};
+            
+            lines.forEach(line => {
+                if (!line.startsWith('#') && line.trim()) {
+                    const [name, value] = line.split(' ');
+                    if (name && value) {
+                        metrics[name] = parseFloat(value);
+                    }
+                }
+            });
+            
+            return metrics;
+        }
+
+        function updateDashboard() {
+            fetch('/metrics')
+                .then(response => response.text())
+                .then(text => {
+                    const metrics = parsePrometheusMetrics(text);
+                    
+                    // Mise &agrave; jour du nombre total de pr&eacute;dictions
+                    const totalPredictions = metrics['prediction_request_total'] || 0;
+                    document.getElementById('total-predictions').textContent = totalPredictions;
+
+                    // Mise &agrave; jour du graphique d'&eacute;volution
+                    callsData.x.push(new Date());
+                    callsData.y.push(totalPredictions);
+
+                    // Garder seulement les derni&egrave;res 50 valeurs
+                    if (callsData.x.length > 50) {
+                        callsData.x.shift();
+                        callsData.y.shift();
+                    }
+
+                    Plotly.newPlot('calls-chart', [{
+                        x: callsData.x,
+                        y: callsData.y,
+                        type: 'scatter',
+                        mode: 'lines+markers',
+                        name: 'Nombre d\'appels'
+                    }], {
+                        title: '&Eacute;volution du nombre d\'appels',
+                        xaxis: { title: 'Temps' },
+                        yaxis: { title: 'Nombre d\'appels' }
+                    });
+
+                    // Cr&eacute;ation du graphique des prix
+                    const priceBuckets = Object.entries(metrics)
+                        .filter(([key]) => key.startsWith('prediction_value_euros_bucket'))
+                        .map(([key, value]) => ({
+                            bucket: parseFloat(key.split('le="')[1].split('"')[0]),
+                            count: value
+                        }))
+                        .sort((a, b) => a.bucket - b.bucket);
+
+                    Plotly.newPlot('price-chart', [{
+                        x: priceBuckets.map(b => b.bucket),
+                        y: priceBuckets.map(b => b.count),
+                        type: 'bar',
+                        name: 'Prix'
+                    }], {
+                        title: 'Distribution des prix pr&eacute;dits',
+                        xaxis: { title: 'Prix (&euro;)' },
+                        yaxis: { title: 'Nombre de pr&eacute;dictions' }
+                    });
+                });
+        }
+
+        // Mise &agrave; jour initiale et rafra&icirc;chissement toutes les 15 secondes
+        updateDashboard();
+        setInterval(updateDashboard, 15000);
+    </script>
+</body>
+</html>
